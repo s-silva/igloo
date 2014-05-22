@@ -22,6 +22,12 @@ var environments = {
       port: '27017',
       opts: {}
     },
+    api: {
+      server: {
+        host: 'localhost',
+        port: 3001,
+      }
+    },
     redis: {
       host: 'localhost',
       port: 6379,

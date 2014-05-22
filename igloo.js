@@ -30,10 +30,13 @@ function igloo(callback) {
 
 }
 
-if (!module.parent)
+if (!module.parent){
+  require('./api/server')(config)
+
   igloo(function(err, app) {
     if (err) return lib.logger.error(err)
     app.listen(config.port, function() {
       lib.logger.info('Igloo started at %s://%s:%d', config.protocol, config.host, config.port)
     })
   })
+}
