@@ -31,10 +31,12 @@ function igloo(callback) {
 }
 
 if (!module.parent){
-  require('./api/server')(config)
-
+  
   igloo(function(err, app) {
     if (err) return lib.logger.error(err)
+
+    require('./api/server')(config, lib.db)
+
     app.listen(config.port, function() {
       lib.logger.info('Igloo started at %s://%s:%d', config.protocol, config.host, config.port)
     })

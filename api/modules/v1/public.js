@@ -9,11 +9,11 @@ module.exports = function(server){
   server.version = '1.0.0';
   server.security = 'public';
   
-  server.get('/public/foo', function(req, res, next){
+  server.get('/public/foo', function(req, res){
     res.send({msg: 'Hey! you called foo'})
   })
 
-  server.get('/public/foo/:id', function(req, res, next){
+  server.get('/public/foo/:id', function(req, res){
     res.send({msg: 'Hey! you called foo with ' + req.params.id})
   })
 
