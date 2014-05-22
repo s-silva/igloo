@@ -60,6 +60,11 @@ module.exports = function(config, db){
         if(err || !retToken) cb(null, false)
         if(!retToken.email) cb(null, false)
 
+        // todo: compare createdAt date and delete the token
+        // if it's older than expiration time. Mongo does it (in TTL)
+        // but looks like Mongoose fails to write it to the db
+        // correctly in some cases.
+
         User.findOne({email: retToken.email}, function( err, user ) {
 
           req.authUser = user

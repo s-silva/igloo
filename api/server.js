@@ -115,6 +115,23 @@ var initModule = module.exports = function(config, db){
  
   server.use(restify.authorizationParser())
   server.use(restify.bodyParser({mapParams: false}))
+
+  server.pre(restify.pre.pause());
+  server.pre(restify.pre.sanitizePath());
+  server.pre(restify.pre.userAgentConnection());
+  server.use(restify.requestLogger());
+  server.use(restify.throttle({
+          burst: 10,
+          rate: 10,  // 10 requests/sec.
+          ip: true,
+  }));
+
+  server.use(restify.acceptParser(server.acceptable));
+  server.use(restify.dateParser());
+  server.use(restify.queryParser());
+  server.use(restify.gzipResponse());
+
+
   restifyOAuth2.cc(server, {tokenEndpoint: '/token', hooks: require("./hooks")(config, db)})
 
   require('./modules')(midServer)
