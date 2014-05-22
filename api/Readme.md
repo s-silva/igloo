@@ -1,7 +1,55 @@
 
 # Igloo API Server
 
-Based on Restify [node-apiserver](https://github.com/kilianc/node-apiserver)
+Based on [Restify](https://github.com/mcavage/node-restify) and [restify-oauth2](https://github.com/domenic/restify-oauth2)
 
-curl 'localhost:8080/secret/ss' -H 'Authorization: Bearer Zgn57OZPlhhs4kV13gYyvsMQpuE2lPxCUdRPKuLp7P8=x'
-curl -u officialApiClient:C0FFEE http://localhost:8080/token -d 'grant_type=client_credentials'
+## Server
+
+The server should start with the app if it's enabled, otherwise run:
+
+```bash
+node app/server.js
+```
+
+Note: Make sure that you have set up api.server section of config correctly,
+by default, the server should start in http://localhost:3001
+
+## Adding API/Routing
+
+Recommended directory structure for API is:
+
+```
+└─. modules
+  ├── common
+  |  ├── public.js
+  |  ├── private.js
+  |  └── something.js
+  ├── v1
+  |  ├── public.js
+  |  ├── private.js
+  |  └── something.js
+  ├── v2
+  |  ├── public.js
+  |  ├── private.js
+  |  └── something.js
+  └── index.js
+```
+
+Each file needs to have version and security settings defined for all the routes defined
+first and all the files should be added to index.js in modules directory.
+
+## Testing OAuth2 Provider
+
+* First get a token by sending user id/email and user secret/password to /token route.
+  By default it's user's email address and password (default: admin@example.com/admin, if you
+  uncomment default user creation code in api/hooks.js).
+
+```bash
+curl -u USER_ID:SECRET_OR_PASSWORD http://localhost:3001/token -d 'grant_type=client_credentials'
+```
+
+* The token should be sent in an 'Authorization' header.
+
+```bash
+curl 'localhost:3001/secret' -H 'Authorization: Bearer TOKEN'
+```
