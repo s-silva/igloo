@@ -1,3 +1,129 @@
 #!/usr/bin/env node
 
-// TODO
+var program = require('commander');
+var mkdirp = require('mkdirp');
+var os = require('os');
+var fs = require('fs');
+var path = require('path');
+
+var pkg = require('../package.json');
+
+var version = pkg.version;
+
+program
+  .version(version)
+  .usage('[--add/--clone] [dir] [package list]')
+  .option('--add', 'installs a package to current Igloo')
+  .option('--clone', 'creates a new Igloo instance (with additional packages if you want)')
+  .parse(process.argv)
+
+var mainPath = path.dirname(__dirname)
+
+
+if(program.add){
+
+  addPackages(path.dirname(__dirname), program.args)
+  
+}else if(program.clone){
+
+  var destinationPath = program.args.shift() || '.';
+  var appName = path.basename(path.resolve(destinationPath));
+
+  // clone project
+
+  // addPackages(destinationPath, program.args)
+
+}else{
+  program.help();
+}
+
+
+function validatePackage(base, packageName){
+  // todo: do patch/js validations
+  return true
+}
+
+function addPackage(base, packageName){
+  var packagePath = path.join(base, './packages/' + packageName)
+  var basePackage = JSON.parse(fs.readFileSync(path.join(base, './package.json'), 'utf8'))
+  var packageData = {}
+
+  // add dependencies
+
+  packageData = JSON.parse(fs.readFileSync(path.join(packagePath, './package.json'), 'utf8'))
+
+  if(packageData.dependencies){
+    for(key in packageData.dependencies){
+
+      // todo: instead of this, implement a way to
+      // compare package versions with semver and upgrade
+      // if needed
+
+      if(!basePackage.dependencies[key]){
+        basePackage.dependencies[key] = packageData.dependencies[key]
+      }
+    }
+
+    fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2), 'utf8')
+  }
+
+  // create new files
+
+  if(packageData.files){
+    for(var i=0; i<packageData.files.length; i++){
+      var packageFile = packageData.files[i]
+
+      mkdir(path.join(base, packageFile.destination))
+
+      fs.createReadStream(path.join(packagePath, './new/' + packageFile.source))
+        .pipe(fs.createWriteStream(path.join(base, packageFile.destination, './' + packageFile.source)))
+    }
+  }
+
+  // patching
+
+  // todo: add patching code
+  
+
+  return true
+}
+
+
+// add package to existing project/dir
+function addPackages(base, packageList){
+
+  console.log('Adding packages...')
+
+  // check everything before actually making changes
+
+  for(var i=0; i<packageList.length; i++){
+    if(!validatePackage(base, packageList[i])){
+      abort('Found invalid packages in the list');
+      break;
+    }
+  }
+
+  // add packages
+
+  for(var i=0; i<packageList.length; i++){
+    if(!addPackage(base, packageList[i])){
+      abort('Error adding package: ' + packageList[i]);
+      break;
+    }
+  }
+
+
+}
+
+function mkdir(dirPath){
+  if(!fs.existsSync(dirPath)){
+    fs.mkdirSync(dirPath, '0755')
+  }
+}
+
+
+// exit
+function abort(str) {
+  console.error(str);
+  process.exit(1);
+}

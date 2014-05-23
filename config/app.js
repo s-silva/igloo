@@ -94,6 +94,7 @@ module.exports = function(lib, callback) {
   // error handling
   app.use(errorHandler())
 
+  //-- igloo.patch.marker: middleware-last --//
 
   callback(null, app)
 

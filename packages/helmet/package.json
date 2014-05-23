@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "helmet": "~0.2.1"
+  },
+  "files": [
+    {
+      "name": "helment",
+      "destination": "config/packages",
+      "source": "helmetMiddleware.js"
+    }
+  ]
+}
