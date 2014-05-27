@@ -1,95 +1,82 @@
 #!/usr/bin/env node
 
-var program = require('commander');
-var mkdirp = require('mkdirp');
-var os = require('os');
-var fs = require('fs');
-var path = require('path');
+/** 
+ * Compared to other generators, Igloo generator has a different
+ * approach.
+ * 
+ * 1. The user can build an Igloo using 'igloo create' command (or
+ *    a command like 'igloo create helmet gulp' to create an Igloo
+ *    with 'helmet' and 'gulp' packages preinstalled).
+ * 
+ * 2. The Igloo will contain all the examples and packages.
+ *
+ * 3. The user will be able to add and remove packages later using
+ *    './bin/igloo add' and './bin/igloo remove' commands executed
+ *    on the created Igloo. (As long as Igloo markers aren't
+ *    deleted)
+ *
+ **/
 
-var pkg = require('../package.json');
+var program = require('commander')
+var mkdirp = require('mkdirp')
+var fs = require('fs')
+var path = require('path')
+var pkg = require('../package.json')
 
 var version = pkg.version;
+var mainPath = path.dirname(__dirname)
+
+
+// show help
 
 program
   .version(version)
   .usage('[--add/--clone] [dir] [package list]')
-  .option('--add', 'installs a package to current Igloo')
-  .option('--clone', 'creates a new Igloo instance (with additional packages if you want)')
+  .option('--add', 'add packages to current Igloo')
+  .option('--remove', 'remove packages')
+  .option('--create', 'creates a new Igloo instance (with additional packages if you want)')
   .parse(process.argv)
 
-var mainPath = path.dirname(__dirname)
-
+// initialize
 
 if(program.add){
 
   addPackages(path.dirname(__dirname), program.args)
+
+}else if(program.remove){
+
+  removePackages(path.dirname(__dirname), program.args)
   
-}else if(program.clone){
+}else if(program.create){
 
   var destinationPath = program.args.shift() || '.';
   var appName = path.basename(path.resolve(destinationPath));
 
   // clone project
 
-  // addPackages(destinationPath, program.args)
+  cloneProject(path.dirname(__dirname), program.args, destinationPath)
+
+  addPackages(destinationPath, program.args)
 
 }else{
   program.help();
 }
 
 
+/**
+ * Validate package by decoding patches and
+ * comparing those with the Igloo config etc.
+ */
 function validatePackage(base, packageName){
   // todo: do patch/js validations
   return true
 }
 
-function addPackage(base, packageName){
-  var packagePath = path.join(base, './packages/' + packageName)
-  var basePackage = JSON.parse(fs.readFileSync(path.join(base, './package.json'), 'utf8'))
-  var packageData = {}
 
-  // add dependencies
-
-  packageData = JSON.parse(fs.readFileSync(path.join(packagePath, './package.json'), 'utf8'))
-
-  if(packageData.dependencies){
-    for(key in packageData.dependencies){
-
-      // todo: instead of this, implement a way to
-      // compare package versions with semver and upgrade
-      // if needed
-
-      if(!basePackage.dependencies[key]){
-        basePackage.dependencies[key] = packageData.dependencies[key]
-      }
-    }
-
-    fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2), 'utf8')
-  }
-
-  // create new files
-
-  if(packageData.files){
-    for(var i=0; i<packageData.files.length; i++){
-      var packageFile = packageData.files[i]
-
-      mkdir(path.join(base, packageFile.destination))
-
-      fs.createReadStream(path.join(packagePath, './new/' + packageFile.source))
-        .pipe(fs.createWriteStream(path.join(base, packageFile.destination, './' + packageFile.source)))
-    }
-  }
-
-  // patching
-
-  // todo: add patching code
-  
-
-  return true
-}
-
-
-// add package to existing project/dir
+/**
+ * Go through all the requested packages and install
+ * them if all the packages are valid.
+ */
 function addPackages(base, packageList){
 
   console.log('Adding packages...')
@@ -112,12 +99,320 @@ function addPackages(base, packageList){
     }
   }
 
+}
+
+/**
+ * Go through all the requested packages and remove
+ * them if all the packages are valid.
+ *
+ * Hmm, maybe we don't need to validate them here?
+ */
+function removePackages(base, packageList){
+
+  console.log('Removing packages...')
+
+  // check everything before actually making changes
+
+  for(var i=0; i<packageList.length; i++){
+    if(!validatePackage(base, packageList[i])){
+      abort('Found invalid packages in the list');
+      break;
+    }
+  }
+
+  // remove packages
+
+  for(var i=0; i<packageList.length; i++){
+    if(!removePackage(base, packageList[i])){
+      abort('Error removing package: ' + packageList[i]);
+      break;
+    }
+  }
 
 }
+
+
+
+/**
+ * Install package to current Igloo mentioned in
+ * 'base' parameter.
+ */
+function addPackage(base, packageName){
+  var packagePath = path.join(base, './packages/' + packageName)
+  var basePackage = JSON.parse(fs.readFileSync(path.join(base, './package.json'), 'utf8'))
+  var packageData = {}
+
+  // add dependencies
+
+  packageData = JSON.parse(fs.readFileSync(path.join(packagePath, './package.json'), 'utf8'))
+
+  if(packageData.dependencies){
+    for(key in packageData.dependencies){
+
+      // todo: instead of this, implement a way to
+      // compare package versions with semver and update
+      // if needed
+
+      if(!basePackage.dependencies[key]){
+        basePackage.dependencies[key] = packageData.dependencies[key]
+      }
+    }
+
+    fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2), 'utf8')
+    console.log('* ./package.json')
+  }
+
+  // create new files
+
+  if(packageData.files){
+    for(var i=0; i<packageData.files.length; i++){
+      var packageFile = packageData.files[i]
+
+      mkdir(path.join(base, packageFile.destination))
+
+      fs.createReadStream(path.join(packagePath, './new/' + packageFile.source))
+        .pipe(fs.createWriteStream(path.join(base, packageFile.destination, './' + packageFile.source)))
+
+      console.log('+ ' + packageFile.source)
+    }
+  }
+
+  // patching
+
+  var patchData = fs.readFileSync(path.join(packagePath, './patch.js'), 'utf8')
+  var cPatchData = patchData
+  var searchIndex = 0
+  var lastFunc = ''
+  var PATCH_CODE = '//-- package.add('
+
+  // search for each patch
+
+  for(;;searchIndex++){
+    var pos = cPatchData.indexOf(PATCH_CODE)
+
+    if(pos === -1){
+      if(searchIndex)
+        addPatch(cPatchData, lastFunc)
+      break;
+
+    }else{
+      if(searchIndex)
+        addPatch(cPatchData.substr(0, pos), lastFunc)
+    }
+
+    var cmdEnd = cPatchData.substr(pos).indexOf(')') + ')'.length
+
+    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (pos + PATCH_CODE.length))
+
+    cPatchData = cPatchData.substr(pos + cmdEnd)
+
+  }
+
+  function addPatch(str, func){
+    str = str.trim()
+
+    var params = func.split(',');
+    for(var i=0; i<params.length; i++)
+      params[i] = params[i].trim().replace (/(^')|('$)/g, '')
+
+    if(params.length === 3){
+
+      var fileContent = fs.readFileSync(path.join(base, params[0]), 'utf8')
+      var markerString = '//-- igloo.patch.marker: ' + params[1] + ' --//'
+      var indent = '  ', indentPos
+      var newLine = '\n'
+
+      // get new line format (unix/windows/...)
+
+      if(fileContent.indexOf('\r\n') !== -1) newLine = '\r\n'
+      else if(fileContent.indexOf('\n\r') !== -1) newLine = '\n\r'
+
+
+      // calculate indent at package marker
+
+      indentPos = fileContent.indexOf(markerString)
+
+      if(indentPos !== -1){
+        var t  = fileContent.substr(0, indentPos)
+        var sp = t.lastIndexOf(newLine)
+
+        if(sp !== -1){
+          indent = t.substr(sp + newLine.length, indentPos - sp - newLine.length)
+        }
+      }
+
+      // set new indent to patch content
+
+      str = str.replace(/\r\n|\n\r|\n/g, newLine + indent)
+
+      // apply new patch and add markers
+
+      if(fileContent.indexOf('//-- igloo.patch.start: ' + packageName + ', ' + params[2] + ' --//') === -1){
+
+        fileContent = fileContent.replace(markerString, markerString + newLine + indent +
+          '//-- igloo.patch.start: ' + packageName + ', ' + params[2] + ' --//' + newLine + indent + str + newLine + indent +
+          '//-- igloo.patch.end: '   + packageName + ', ' + params[2] + ' --//')
+
+        fs.writeFileSync(path.join(base, params[0]), fileContent, 'utf8')
+        console.log('* ' + params[0])
+      }else{
+        console.log('  ' + params[0] + ' already updated')
+      }
+    }
+  }
+
+  console.log('Added ' + packageName + ' package.')
+  return true
+}
+
+
+/**
+ * Remove package to current Igloo mentioned in
+ * 'base' parameter.
+ * todo: think of a better way to handle package.json clean up
+ */
+function removePackage(base, packageName){
+  var packagePath = path.join(base, './packages/' + packageName)
+  var basePackage = JSON.parse(fs.readFileSync(path.join(base, './package.json'), 'utf8'))
+  var packageData = {}
+
+  // show a list of dependencies to remove
+
+  packageData = JSON.parse(fs.readFileSync(path.join(packagePath, './package.json'), 'utf8'))
+
+  console.log('Following dependencies were added by ' + packageName +
+    ' please remove these manually')
+
+  if(packageData.dependencies){
+    for(key in packageData.dependencies){
+        console.log('* ' + key)
+    }
+  }
+
+  console.log('')
+
+  // remove new files
+
+  if(packageData.files){
+    for(var i=0; i<packageData.files.length; i++){
+      var packageFile = packageData.files[i]
+
+      unlink(path.join(base, packageFile.destination, './' + packageFile.source))
+
+      console.log('- ' + packageFile.source)
+    }
+  }
+
+  // remove patches
+
+  var patchData = fs.readFileSync(path.join(packagePath, './patch.js'), 'utf8')
+  var cPatchData = patchData
+  var searchIndex = 0
+  var lastFunc = ''
+  var PATCH_CODE = '//-- package.add('
+
+  // search for each patch
+
+  for(;;searchIndex++){
+    var pos = cPatchData.indexOf(PATCH_CODE)
+
+    if(pos === -1){
+      if(searchIndex)
+        removePatch(cPatchData, lastFunc)
+      break;
+
+    }else{
+      if(searchIndex)
+        removePatch(cPatchData.substr(0, pos), lastFunc)
+    }
+
+    var cmdEnd = cPatchData.substr(pos).indexOf(')') + ')'.length
+
+    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (pos + PATCH_CODE.length))
+
+    cPatchData = cPatchData.substr(pos + cmdEnd)
+
+  }
+
+  function removePatch(str, func){
+    str = str.trim()
+
+    var params = func.split(',');
+    for(var i=0; i<params.length; i++)
+      params[i] = params[i].trim().replace (/(^')|('$)/g, '')
+
+    if(params.length === 3){
+
+      var fileContent = fs.readFileSync(path.join(base, params[0]), 'utf8')
+      var startMarker = '//-- igloo.patch.start: ' + packageName + ', ' + params[2] + ' --//'
+      var endMarker   = '//-- igloo.patch.end: '   + packageName + ', ' + params[2] + ' --//'
+      var patchStart = 0;
+      var patchEnd = 0;
+
+      // apply new patch and add markers
+
+      patchStart = fileContent.indexOf(startMarker)
+      if(patchStart === -1) return false
+
+      patchEnd = fileContent.indexOf(endMarker)
+      if(patchEnd === -1) return false
+
+      fileContent = fileContent.substr(0, patchStart) + fileContent.substr(patchEnd + endMarker.length)
+
+      fs.writeFileSync(path.join(base, params[0]), fileContent, 'utf8')
+      console.log('* ' + params[0])
+    }
+  }
+
+  console.log('Removed ' + packageName + ' package.')
+  return true
+}
+
+/**
+ * Create a new Igloo using the current one.
+ */
+function cloneProject(base, packageList, destination){
+
+  // credits: Lindsey Simon
+  // added mkdirp
+  var copyRecursiveSync = function(src, dest, initial) {
+    var exists = fs.existsSync(src)
+    var stats = exists && fs.statSync(src)
+    var isDirectory = exists && stats.isDirectory()
+    if (exists && isDirectory) {
+      mkdirp.sync(dest, 0755)
+      fs.readdirSync(src).forEach(function(childItemName) {
+        copyRecursiveSync(path.join(src, childItemName),
+                          path.join(dest, childItemName))
+      });
+    } else {
+      fs.linkSync(src, dest, true)
+    }
+  }
+
+  console.log('Building a new Igloo...')
+  console.log(base, destination)
+
+  copyRecursiveSync(base, destination)
+
+  console.log('Foundation is ready, installing packages...')
+}
+
+
+
+
+/* supporting functions -------------------------*/
+
 
 function mkdir(dirPath){
   if(!fs.existsSync(dirPath)){
     fs.mkdirSync(dirPath, '0755')
+  }
+}
+
+function unlink(dirPath){
+  if(fs.existsSync(dirPath)){
+    fs.unlinkSync(dirPath)
   }
 }
 
