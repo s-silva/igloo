@@ -22,6 +22,8 @@ var mkdirp = require('mkdirp')
 var fs = require('fs')
 var path = require('path')
 var pkg = require('../package.json')
+var ncp = require('ncp').ncp
+
 
 var version = pkg.version;
 var mainPath = path.dirname(__dirname)
@@ -41,12 +43,24 @@ program
 
 if(program.add){
 
-  addPackages(path.dirname(__dirname), program.args)
+  if(path.basename(path.dirname(path.dirname(__dirname))) !== 'node_modules'){
+    addPackages(path.dirname(__dirname), program.args)
+
+  }else{
+    console.log('You cannot install packages to global Igloo installation,')
+    console.log('use \'create\' command to build your own Igloo.')
+  }
 
 }else if(program.remove){
 
-  removePackages(path.dirname(__dirname), program.args)
+  if(path.basename(path.dirname(path.dirname(__dirname))) !== 'node_modules'){
+    removePackages(path.dirname(__dirname), program.args)
   
+  }else{
+    console.log('You cannot remove packages from global Igloo installation,')
+    console.log('use \'create\' command to build your own Igloo.')
+  }
+
 }else if(program.create){
 
   var destinationPath = program.args.shift() || '.';
@@ -54,9 +68,10 @@ if(program.add){
 
   // clone project
 
-  cloneProject(path.dirname(__dirname), program.args, destinationPath)
+  cloneProject(path.dirname(__dirname), program.args, destinationPath, function(){
+    addPackages(destinationPath, program.args)
+  })
 
-  addPackages(destinationPath, program.args)
 
 }else{
   program.help();
@@ -158,7 +173,7 @@ function addPackage(base, packageName){
       }
     }
 
-    fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2), 'utf8')
+    fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2))
     console.log('* ./package.json')
   }
 
@@ -371,11 +386,11 @@ function removePackage(base, packageName){
 /**
  * Create a new Igloo using the current one.
  */
-function cloneProject(base, packageList, destination){
+function cloneProject(base, packageList, destination, callback){
 
   // credits: Lindsey Simon
   // added mkdirp
-  var copyRecursiveSync = function(src, dest, initial) {
+  /*var copyRecursiveSync = function(src, dest, initial) {
     var exists = fs.existsSync(src)
     var stats = exists && fs.statSync(src)
     var isDirectory = exists && stats.isDirectory()
@@ -386,16 +401,35 @@ function cloneProject(base, packageList, destination){
                           path.join(dest, childItemName))
       });
     } else {
+      if(src.indexOf('package.json') !== -1 || dest.indexOf('package.json') !== -1)
+      console.log('###', src, dest, '###')
       fs.linkSync(src, dest, true)
     }
-  }
+  }*/
+
 
   console.log('Building a new Igloo...')
-  console.log(base, destination)
 
-  copyRecursiveSync(base, destination)
+  ncp.limit = 32;
 
-  console.log('Foundation is ready, installing packages...')
+  ncp(base, destination, {filter: 
+      function(name){
+        if(name.indexOf('igloo/.git/') !== -1)
+          return false
+        return true
+      }},
+      function (err) {
+
+    if (err)
+      return console.error(err)
+
+    console.log('Foundation is ready, installing packages...')
+
+    if(callback)
+      callback()
+  });
+
+
 }
 
 
