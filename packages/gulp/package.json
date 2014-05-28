@@ -1,11 +1,32 @@
 {
   "dependencies": {
   },
+  "devDependencies": {
+    "gulp-rename": "1.2.x",
+    "gulp-notify": "1.3.x",
+    "gulp-livereload": "1.5.x",
+    "gulp-ruby-sass": "0.5.x",
+    "gulp-concat": "2.2.x",
+    "gulp-uglify": "0.3.x",
+    "gulp-cache": "0.1.x",
+    "gulp-clean": "0.3.x",
+    "gulp-autoprefixer": "0.0.7",
+    "gulp-minify-css": "0.3.x",
+    "gulp-jshint": "1.6.x",
+    "gulp-imagemin": "0.5.x",
+    "gulp": "3.6.x"
+  },
   "files": [
     {
-      "name": "gulp",
-      "destination": "config/packages",
-      "source": "gulpMiddleware.js"
+      "name": "main scss file",
+      "destination": "assets/public/scss",
+      "source": "main.scss"
+    },
+    {
+      "name": "gulp file",
+      "destination": "",
+      "source": "gulpfile.js"
     }
-  ]
+  ],
+  "note": "Check Readme.md in packages/gulp directory."
 }

@@ -15,6 +15,9 @@
  *    on the created Igloo. (As long as Igloo markers aren't
  *    deleted)
  *
+ *    Well, now you can just use 'igloo' command to add/remove
+ *    packages from any Igloo you've created.
+ *
  **/
 
 var program = require('commander')
@@ -27,6 +30,7 @@ var ncp = require('ncp').ncp
 
 var version = pkg.version;
 var mainPath = path.dirname(__dirname)
+var cwd = process.cwd()
 
 
 // show help
@@ -41,14 +45,22 @@ program
 
 // initialize
 
+
 if(program.add){
 
   if(path.basename(path.dirname(path.dirname(__dirname))) !== 'node_modules'){
     addPackages(path.dirname(__dirname), program.args)
 
   }else{
-    console.log('You cannot install packages to global Igloo installation,')
-    console.log('use \'create\' command to build your own Igloo.')
+    if(fs.existsSync(path.join(cwd, 'igloo.js'))){
+      // we're in an igloo dir, just install stuff to that package
+      addPackages(cwd, program.args)
+
+    }else{
+      // no way!
+      console.log('You cannot install packages to global Igloo installation,')
+      console.log('use \'create\' command to build your own Igloo.')
+    }
   }
 
 }else if(program.remove){
@@ -57,8 +69,15 @@ if(program.add){
     removePackages(path.dirname(__dirname), program.args)
   
   }else{
-    console.log('You cannot remove packages from global Igloo installation,')
-    console.log('use \'create\' command to build your own Igloo.')
+    if(fs.existsSync(path.join(cwd, 'igloo.js'))){
+      // we're in an igloo dir, just remove packages from that
+      removePackages(cwd, program.args)
+
+    }else{
+      // again, no way!
+      console.log('You cannot remove packages from global Igloo installation,')
+      console.log('use \'create\' command to build your own Igloo.')
+    }
   }
 
 }else if(program.create){
@@ -161,7 +180,7 @@ function addPackage(base, packageName){
 
   packageData = JSON.parse(fs.readFileSync(path.join(packagePath, './package.json'), 'utf8'))
 
-  if(packageData.dependencies){
+  if(packageData.dependencies || packageData.devDependencies){
     for(key in packageData.dependencies){
 
       // todo: instead of this, implement a way to
@@ -173,8 +192,18 @@ function addPackage(base, packageName){
       }
     }
 
+    for(key in packageData.devDependencies){
+
+      if(!basePackage.devDependencies)
+        basePackage.devDependencies = {}
+
+      if(!basePackage.devDependencies[key]){
+        basePackage.devDependencies[key] = packageData.devDependencies[key]
+      }
+    }
+
     fs.writeFileSync(path.join(base, './package.json'), JSON.stringify(basePackage, null, 2))
-    console.log('* ./package.json')
+    console.log(color('yellow', '* ./package.json'))
   }
 
   // create new files
@@ -188,7 +217,7 @@ function addPackage(base, packageName){
       fs.createReadStream(path.join(packagePath, './new/' + packageFile.source))
         .pipe(fs.createWriteStream(path.join(base, packageFile.destination, './' + packageFile.source)))
 
-      console.log('+ ' + packageFile.source)
+      console.log(color('green', '+ ' + packageFile.source))
     }
   }
 
@@ -269,14 +298,17 @@ function addPackage(base, packageName){
           '//-- igloo.patch.end: '   + packageName + ', ' + params[2] + ' --//')
 
         fs.writeFileSync(path.join(base, params[0]), fileContent, 'utf8')
-        console.log('* ' + params[0])
+        console.log(color('yellow', '* ' + params[0]))
       }else{
         console.log('  ' + params[0] + ' already updated')
       }
     }
   }
 
-  console.log('Added ' + packageName + ' package.')
+  console.log(color('green', 'Added ' + packageName + ' package.'))
+
+  if(packageData.note)
+    console.log(color('cyan', 'Notes (from ' + packageName + '): ' + packageData.note))
   return true
 }
 
@@ -300,7 +332,13 @@ function removePackage(base, packageName){
 
   if(packageData.dependencies){
     for(key in packageData.dependencies){
-        console.log('* ' + key)
+        console.log(color('yellow', '* ' + key))
+    }
+  }
+
+  if(packageData.devDependencies){
+    for(key in packageData.devDependencies){
+        console.log(color('yellow', '* ' + key + ' [dev]'))
     }
   }
 
@@ -314,7 +352,7 @@ function removePackage(base, packageName){
 
       unlink(path.join(base, packageFile.destination, './' + packageFile.source))
 
-      console.log('- ' + packageFile.source)
+      console.log(color('red', '- ' + packageFile.source))
     }
   }
 
@@ -375,11 +413,11 @@ function removePackage(base, packageName){
       fileContent = fileContent.substr(0, patchStart) + fileContent.substr(patchEnd + endMarker.length)
 
       fs.writeFileSync(path.join(base, params[0]), fileContent, 'utf8')
-      console.log('* ' + params[0])
+      console.log(color('yellow', '* ' + params[0]))
     }
   }
 
-  console.log('Removed ' + packageName + ' package.')
+  console.log(color('green', 'Removed ' + packageName + ' package.'))
   return true
 }
 
@@ -388,27 +426,9 @@ function removePackage(base, packageName){
  */
 function cloneProject(base, packageList, destination, callback){
 
-  // credits: Lindsey Simon
-  // added mkdirp
-  /*var copyRecursiveSync = function(src, dest, initial) {
-    var exists = fs.existsSync(src)
-    var stats = exists && fs.statSync(src)
-    var isDirectory = exists && stats.isDirectory()
-    if (exists && isDirectory) {
-      mkdirp.sync(dest, 0755)
-      fs.readdirSync(src).forEach(function(childItemName) {
-        copyRecursiveSync(path.join(src, childItemName),
-                          path.join(dest, childItemName))
-      });
-    } else {
-      if(src.indexOf('package.json') !== -1 || dest.indexOf('package.json') !== -1)
-      console.log('###', src, dest, '###')
-      fs.linkSync(src, dest, true)
-    }
-  }*/
-
-
   console.log('Building a new Igloo...')
+
+  mkdir(destination)
 
   ncp.limit = 32;
 
@@ -423,7 +443,7 @@ function cloneProject(base, packageList, destination, callback){
     if (err)
       return console.error(err)
 
-    console.log('Foundation is ready, installing packages...')
+    console.log(color('green', 'Foundation is ready, installing packages...'))
 
     if(callback)
       callback()
@@ -440,7 +460,7 @@ function cloneProject(base, packageList, destination, callback){
 
 function mkdir(dirPath){
   if(!fs.existsSync(dirPath)){
-    fs.mkdirSync(dirPath, '0755')
+    mkdirp.sync(dirPath, '0755')
   }
 }
 
@@ -448,6 +468,51 @@ function unlink(dirPath){
   if(fs.existsSync(dirPath)){
     fs.unlinkSync(dirPath)
   }
+}
+
+function color(cl, text){
+
+  // from colors package (https://github.com/Marak/colors.js)
+  var styles = {
+    //styles
+    'bold'      : ['\x1B[1m',  '\x1B[22m'],
+    'italic'    : ['\x1B[3m',  '\x1B[23m'],
+    'underline' : ['\x1B[4m',  '\x1B[24m'],
+    'inverse'   : ['\x1B[7m',  '\x1B[27m'],
+    'strikethrough' : ['\x1B[9m',  '\x1B[29m'],
+    //text colors
+    //grayscale
+    'white'     : ['\x1B[37m', '\x1B[39m'],
+    'grey'      : ['\x1B[90m', '\x1B[39m'],
+    'black'     : ['\x1B[30m', '\x1B[39m'],
+    //colors
+    'blue'      : ['\x1B[34m', '\x1B[39m'],
+    'cyan'      : ['\x1B[36m', '\x1B[39m'],
+    'green'     : ['\x1B[32m', '\x1B[39m'],
+    'magenta'   : ['\x1B[35m', '\x1B[39m'],
+    'red'       : ['\x1B[31m', '\x1B[39m'],
+    'yellow'    : ['\x1B[33m', '\x1B[39m'],
+    //background colors
+    //grayscale
+    'whiteBG'     : ['\x1B[47m', '\x1B[49m'],
+    'greyBG'      : ['\x1B[49;5;8m', '\x1B[49m'],
+    'blackBG'     : ['\x1B[40m', '\x1B[49m'],
+    //colors
+    'blueBG'      : ['\x1B[44m', '\x1B[49m'],
+    'cyanBG'      : ['\x1B[46m', '\x1B[49m'],
+    'greenBG'     : ['\x1B[42m', '\x1B[49m'],
+    'magentaBG'   : ['\x1B[45m', '\x1B[49m'],
+    'redBG'       : ['\x1B[41m', '\x1B[49m'],
+    'yellowBG'    : ['\x1B[43m', '\x1B[49m']
+  }
+
+  var cStyle = styles[cl]
+
+  if(cStyle)
+    return cStyle[0] + text + cStyle[1]
+  else
+    return text
+
 }
 
 

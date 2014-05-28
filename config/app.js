@@ -95,10 +95,7 @@ module.exports = function(lib, callback) {
   app.use(errorHandler())
 
   //-- igloo.patch.marker: middleware-last --//
-  //-- igloo.patch.start: helmet, 1 --//
-  var helmet = require('./packages/helmetMiddleware.js')
-  helmet(app)
-  //-- igloo.patch.end: helmet, 1 --//
+  
   
   callback(null, app)
 

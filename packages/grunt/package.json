@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+  },
+  "files": [
+    {
+      "name": "gulp",
+      "destination": "",
+      "source": "Gruntfile.js"
+    }
+  ]
+}

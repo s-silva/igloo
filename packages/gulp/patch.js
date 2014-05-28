@@ -1,5 +1,4 @@
 
-//-- package.add('./config/app.js', 'middleware-last', 1)
+//-- package.add('./app/views/home.jade', 'css-home-first', 1) --//
 
-var gulp = require('./packages/gulpMiddleware.js')
-gulp(app)
+link(rel="stylesheet", href="/build/css/main.min.css")
