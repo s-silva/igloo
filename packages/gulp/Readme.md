@@ -5,8 +5,7 @@ This package includes following Gulp plugins:
 * gulp-notify - notifies when a task is done.
 * gulp-livereload - browser reload on changes.
   install browser extension to get this feature working
-* gulp-ruby-sass - sass compiler.
-  install ruby and run ```$ sudo gem install sass```.
+* gulp-less - less compiler.
 * gulp-concat - concatenates files.
 * gulp-uglify - the name says it.
 * gulp-autoprefixer - browser prefixes for stylesheets.
@@ -35,5 +34,5 @@ $ gulp watch
 Finally, don't forget to link scripts and images in
 '/assets/public/build' directory to the app.
 
-Note: CSS files generated using SASS will be linked
+Note: CSS files generated using LESS will be linked
 automatically.

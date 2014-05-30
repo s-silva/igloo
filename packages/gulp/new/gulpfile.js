@@ -1,6 +1,6 @@
 // Load plugins
 var gulp = require('gulp'),
-    sass = require('gulp-ruby-sass'),
+    less = require('gulp-less'),
     autoprefixer = require('gulp-autoprefixer'),
     minifycss = require('gulp-minify-css'),
     jshint = require('gulp-jshint'),
@@ -15,8 +15,8 @@ var gulp = require('gulp'),
 
 // Styles
 gulp.task('styles', function() {
-  return gulp.src('assets/public/scss/**/*.scss')
-    .pipe(sass({ style: 'expanded', }))
+  return gulp.src('assets/public/less/**/*.less')
+    .pipe(less({ style: 'expanded', }))
     .pipe(autoprefixer('last 2 version', 'safari 5', 'ie 8', 'ie 9', 'opera 12.1', 'ios 6', 'android 4'))
     .pipe(gulp.dest('assets/public/build/css'))
     .pipe(rename({ suffix: '.min' }))

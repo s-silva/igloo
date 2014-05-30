@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "email-templates": "0.1.x",
+    "nodemailer": "0.6.x"
+  },
+  "files": [
+    {
+      "name": "template jade",
+      "destination": "assets/templates/newsletter",
+      "source": "html.jade"
+    },
+    {
+      "name": "template jade",
+      "destination": "assets/templates/newsletter",
+      "source": "style.css"
+    },
+    {
+      "name": "template jade",
+      "destination": "assets/templates/newsletter",
+      "source": "text.jade"
+    },
+    {
+      "name": "nodemailer controller",
+      "destination": "app/controllers",
+      "source": "email.js"
+    }
+  ]
+}

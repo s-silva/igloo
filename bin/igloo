@@ -244,11 +244,11 @@ function addPackage(base, packageName){
         addPatch(cPatchData.substr(0, pos), lastFunc)
     }
 
-    var cmdEnd = cPatchData.substr(pos).indexOf(')') + ')'.length
+    var cmdEnd = cPatchData.substr(pos).indexOf(') --//') + ')'.length
 
-    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (pos + PATCH_CODE.length))
+    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (PATCH_CODE.length))
 
-    cPatchData = cPatchData.substr(pos + cmdEnd)
+    cPatchData = cPatchData.substr(pos + cmdEnd + ' --//'.length)
 
   }
 
@@ -381,7 +381,7 @@ function removePackage(base, packageName){
 
     var cmdEnd = cPatchData.substr(pos).indexOf(')') + ')'.length
 
-    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (pos + PATCH_CODE.length))
+    lastFunc = cPatchData.substr(pos + PATCH_CODE.length, cmdEnd - (PATCH_CODE.length))
 
     cPatchData = cPatchData.substr(pos + cmdEnd)
 

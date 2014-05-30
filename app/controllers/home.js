@@ -12,7 +12,7 @@ function home(lib, settings) {
 	  },
 
 	  about: function(req, res, next) {
-      res.send(200, 'Hello, this is Igloo.')
+      	res.send(200, 'Hello, this is Igloo.')
 	  }
 
 	}
