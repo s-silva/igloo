@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "express-cdn": "0.2.x"
+  },
+  "files": [
+    {
+      "name": "express cdn setup",
+      "destination": "config/packages",
+      "source": "cdnMiddleware.js"
+    }
+  ],
+  "note": "Make sure to add CDN setup details to config/packages/cdnMiddleware.js and change views according to Express-CDN documentation."
+}
